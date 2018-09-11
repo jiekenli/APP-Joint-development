@@ -1,13 +1,184 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<title>Document</title>
-</head>
-<body>
-	<p>人生若只如初见，何事秋风悲画扇。
-等闲变却故人心，却道故人心易变。
-骊山语罢清宵半，泪雨零铃终不怨。
-何如薄幸锦衣郎，比翼连枝当日愿。</p>
-</body>
-</html>
+<template>
+<div>
+    <app-header :title="conten">
+    </app-header>
+    <app-content id="focus_content" :reciveScroll="true" ref="content" @onScroll='contentScroll'>
+        <div v-show="page=='recommended'">
+            <h1>推荐</h1>
+        </div>
+        <div v-show="page=='special'">
+            <div id="focus_header">
+                <input type="text" placeholder="请输入要搜索的姓名" v-model="searchVal">
+            </div>
+            <!-- 第一次加载的效果 -->
+            <div v-show="showsearch" class="focus_detail" v-for="(item,index) in peopleData" :key="index">
+                <div class="focus_content">
+                    <img :src="item.portraitURL">
+                    <div class="discript">
+                        <div class="user">{{item.username}}</div>
+                        <span>{{item.desc}}</span>
+                    </div>
+                    <div class="outfocut">已关注</div>
+                </div>
+            </div>
+            <!-- 搜索显示的列表 -->
+            <div v-show="!showsearch" class="focus_detail" v-for="item in list">
+                <div class="focus_content">
+                    <img :src="item.portraitURL">
+                    <div class="discript">
+                        <div class="user">{{item.username}}</div>
+                        <span>{{item.desc}}</span>
+                    </div>
+                    <div class="outfocut">已关注</div>
+                </div>
+
+            </div>
+        </div>
+    </app-content>
+</div>
+
+</template>
+<script>
+import {getfocusPeople} from "@/services/focusService.js"
+export default {
+    data(){
+        return{
+            searchVal:'',
+            page:'recommended',
+            peoplePage:1,
+            //peopleData存放接收到的数据
+            peopleData:[],
+            //isRequest判断是否还需要进行数据加载
+            isRequest:false,
+            //判断显示搜索列表还是原来列表
+            showsearch:true,
+            //
+            arr:[],
+            canRequestPlaying:true,
+            conten:{
+                left:'推荐',
+                right:'关注的人',
+                show:false,
+                rightshow:true,
+                arrowright:false,
+                showleft:true,
+                searchDetails:false
+            }
+        }
+    },
+    mounted(){
+        this.$pubsub.$on('show-page',(data)=>{
+            this.page = data
+            this.getInterData()
+        })
+        
+    },
+    computed:{
+        list:function(){
+            this.arr = this.peopleData.filter(item=>{
+                if(item.username.search(this.searchVal)!=-1){
+                    return item 
+                }
+            })
+            this.showsearch=!this.showsearch;
+            return this.arr;          
+        }
+    },
+    methods:{
+        getPeople(){
+            getfocusPeople(this.peoplePage).then(({result,total})=>{
+                this.peopleData=this.peopleData.concat(result);
+                this.$nextTick(()=>{
+                    this.$refs.content.refreshDOM()
+                    this.isRequest=false
+                    if(this.peoplePage>total){
+                        this.canRequestPlaying = false;
+                    }
+                })
+            })
+        },
+        getInterData(){
+                console.log(this.page,this.peopleData.length)                            
+            //判断要展示的界面有没有数据
+            if(this.page == 'special' && this.peopleData.length <=0){
+                this.getPeople()
+                console.log('执行')  
+            };
+        },
+        contentScroll(y){
+            //当距离底部距离小于100
+            if(y<100 && (!this.isRequest)){
+                if(this.page == 'special' && this.canRequestPlaying){
+                    //请求正在热映的下一页数据
+                    this.peoplePage +=1;
+                    this.isRequest = true;
+                    this.getPeople();
+                }
+        }
+    }
+}
+}
+</script>
+<style scoped>
+#focus_content{
+    background: #fff;
+}
+#focus_header{
+    height:0.5rem;
+    background:#e1e1e1;
+    line-height: 0.5rem;
+    text-align: center;
+}
+#focus_header input{
+    height: 0.3rem;
+    width:3.2rem;
+    font-size: 0.12rem;
+    color: #999;
+    border: none;
+    border-radius: 0.04rem;
+    padding-left: 0.1rem;
+    box-sizing: border-box;
+}
+.focus_detail{
+    height: 0.64rem;
+}
+.focus_content{
+    height: 0.52rem;
+    width:3.45rem;
+    margin: 0.12rem 0 0 0.15rem;
+    border-bottom:solid 1px #ccc;
+}
+.focus_content img{
+    width:0.4rem;
+    height: 0.4rem;
+    margin-right: 0.09rem;
+    float: left;
+}
+.discript{
+    width: 2.49rem;
+    height: 100%;
+    float: left;
+}
+.user{
+    height: 0.21rem;
+    color:#333;
+    font-size: 0.15rem;
+}
+.discript span{
+    height: 0.19rem;
+    font-size: 0.13rem;
+    color: #999;
+}
+.outfocut{
+    width: 0.4rem;
+    height: 0.22rem;
+    margin-top:0.08rem;
+    background: #FF9292;
+    text-align: center;
+    line-height: 0.22rem;
+    font-size: 0.11rem;
+    color: #fff;
+    float: left;
+}
+
+</style>
